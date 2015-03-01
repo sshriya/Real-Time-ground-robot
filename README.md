@@ -90,13 +90,61 @@ cd /lib/firmware
 echo bone-qep2b > $SLOTS
 find /sys |grep eqep
 ```
-
 cat ../position to display tick counts.
+
+Pins: 
+```
+Right encoders
+eqep 1B P8_33
+eqep 1A P8_35
+
+Left Encoders
+eqep 2A P8_41
+eqep 2B P8_42
+```
+The paths for the sysfs entries on the beaglebones are
+
+/sys/devices/ocp.*/{epwmss_addr}.epwmss/{eqep_addr}.eqep/
+```
+For eQEP0, the epwmss address is 48300000 and the eqep address is 48300180
+
+For eQEP1, the epwmss address is 48302000 and the eqep address is 48302180
+
+For eQEP2, the epwmss address is 48304000 and the eqep address is 48304180
+```
+
 
 ## Flashing a new image on BBB
 1. Get the lastest flasher image from http://elinux.org/Beagleboard:BeagleBoneBlack_Debian#Flasher:_.28console.29_.28BeagleBone_Black.2FGreen_eMMC.29
 
 Currently it was:
+
+## ADC 
+Check for the available Device tree overlay, load overlay and the read adc value on cmd
 ```
+1. ls /lib/firmware/ | grep ADC
+2. echo PyBBIO-ADC > $SLOTS
+3. cat /sys/bus/iio/devices/iio\:device0/in_voltage0_raw
+
+```
+cScripts contains adcRead.c which can be used to read adc values. 
+ADC pins:
+ADC0     P9_39
+ADC1     P9_40  
+ADC2     P9_37
+ADC3     P9_38
+ADC4     P9_35
+ADC5     P9_39
+ADC6     P9_33
+
+The device tree can be loaded on boot by :
+```
+nano /etc/default/capemgr
+CAPE=PyBBIO-ADC
+CAPE=bone_eqep1
+```
+
+
+
 
 
