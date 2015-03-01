@@ -176,7 +176,7 @@ int main(int argc, char* argv[])
 	startup();
 
 	begin = time(NULL);
-	while(timeD < 3){
+	while(timeD < 10){
 		end = time(NULL);
 		timeD = (end - begin);	
 	}
