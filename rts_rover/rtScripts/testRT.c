@@ -81,6 +81,8 @@ void rMotor(void *arg)
         RT_TASK *curtask;
         RT_TASK_INFO curtaskinfo;
 	RTIME now, previous;
+	long MAX = 0;
+
 	int fd = open("/dev/mem",O_RDWR | O_SYNC);
     	ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);	
 	pinconf1[OE_ADDR/4] &= pinconf1[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1 << 28)|(1<<16)|(1<<17))); 
@@ -89,15 +91,20 @@ void rMotor(void *arg)
      	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 17); // clear pin P9_15
 	rt_task_set_periodic(NULL, TM_NOW, period1);
         rt_printf("Controling Right Motors!\n");
-	previous = rt_timer_read();
+//	previous = rt_timer_read();
 	while (1){
                 rt_task_wait_period(NULL);
-		now = rt_timer_read();
+		previous = rt_timer_read();
 		pinconf1[GPIO_DATAOUT/4] |= (1 << 17); //PWM on pin P9_23
 		rt_task_sleep(duty1);
 		pinconf1[GPIO_DATAOUT/4] &= ~(1 << 17); //toggle pin
-		//rt_printf("right Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
-		previous = now;
+//		rt_printf("right Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
+		now = rt_timer_read();
+		if((long)((now - previous)%1000000) > MAX){
+			MAX = (long)((now - previous)%1000000) ;
+		}
+		rt_printf("WCET Right Motor: %ld \n", MAX);
+		//previous = now;
 	}
 }
 
@@ -106,6 +113,7 @@ void lMotor(void *arg)
         RT_TASK *curtask;
         RT_TASK_INFO curtaskinfo;
         RTIME now, previous;
+	long MAX = 0;
         int fd = open("/dev/mem",O_RDWR | O_SYNC);
         ulong* pinconf2 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO2_ADDR);     
         pinconf2[OE_ADDR/4] &= pinconf2[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1<<2)|(1 << 3)|(1<<5))); 
@@ -114,15 +122,21 @@ void lMotor(void *arg)
      	pinconf2[GPIO_DATAOUT/4]  &= ~(1 << 3); // clear pin P8_8
         rt_task_set_periodic(NULL, TM_NOW, period2);
         rt_printf("Controling Left Motors!\n");
-        previous = rt_timer_read();
+        //previous = rt_timer_read();
         while (1){
                 rt_task_wait_period(NULL);
-                now = rt_timer_read();
+                previous = rt_timer_read();
                 pinconf2[GPIO_DATAOUT/4] |= (1 << 5); //PWM on pin P8_9
                 rt_task_sleep(duty2);
                 pinconf2[GPIO_DATAOUT/4] &= ~(1 << 5); //toggle pin
-                //rt_printf("Left Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
-                previous = now;
+  //              rt_printf("Left Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000); 
+                now = rt_timer_read();
+		if((long)((now - previous)%1000000) > MAX){
+                        MAX = (long)((now - previous)%1000000) ;
+                }
+                rt_printf("WCET Left Motor: %ld \n", MAX);
+
+		//previous = now;
         }
 }
 
@@ -249,12 +263,12 @@ int main(int argc, char* argv[])
 
 	startup();
 
-	/*begin = time(NULL);
+	begin = time(NULL);
 	while(timeD < 3){
 		end = time(NULL);
 		timeD = (end - begin);	
-	}*/
-	wait_for_ctrl_c();
+	}
+	//wait_for_ctrl_c();
 
 	cleanup();
 

@@ -45,8 +45,8 @@ Encoder l - A: P8_15
 
 #define period 100000
 
-#define period1 1000000
-#define period2 1000000
+#define period1 800000
+#define period2 800000
 
 #define duty1 period1*0.20
 #define duty2 period2*0.20
@@ -85,6 +85,8 @@ void rEnc(void *arg)
     	int inrB = 0;
 	int rtick = 0;
     	char rticks[40];
+	RTIME now, previous;
+	long MAX = 0;
     	int fd = open("/dev/mem",O_RDWR | O_SYNC);
     	ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);
     	//configure encoder pins as input
@@ -95,7 +97,7 @@ void rEnc(void *arg)
 
         while (1){
                 rt_task_wait_period(NULL);
-
+		previous = rt_timer_read();
                 if(pinconf1[GPIO_DATAIN/4] & (1 << 13)){
                         inr = HIGH;
                 }else{
@@ -107,11 +109,17 @@ void rEnc(void *arg)
 			rtick++;
 		}
 		r_last = inr;
-		rt_printf("Right ticks: %d \n", rtick);
+//		rt_printf("Right ticks: %d \n", rtick);
 		
 		//send to odometry task
 		sprintf(rticks, "%d", rtick);
 		rt_queue_write(&rqueue, rticks, sizeof(rticks), Q_NORMAL);
+		now = rt_timer_read();
+                if((long)((now - previous)%1000000) > MAX){
+                        MAX = (long)((now - previous)%1000000) ;
+                }
+                rt_printf("WCET Right Encoder: %ld \n", MAX);
+		
         }
 	return;
 }
@@ -123,7 +131,8 @@ void lEnc(void *arg)
         int inrBl = 0;
         int ltick = 0;
 	char lticks[40];
-
+	RTIME now, previous;
+	long MAX = 0;
         int fd = open("/dev/mem",O_RDWR | O_SYNC);
         ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);
         //configure encoder pins as input
@@ -134,7 +143,7 @@ void lEnc(void *arg)
 
         while (1){
                 rt_task_wait_period(NULL);
-
+		previous = rt_timer_read();
                 if(pinconf1[GPIO_DATAIN/4] & (1 << 15)){
                         inrl = HIGH;
                 }else{
@@ -155,11 +164,16 @@ void lEnc(void *arg)
                         }
                 }
                 l_last = inrl;
-                rt_printf("Left ticks: %d \n", ltick);
+  //              rt_printf("Left ticks: %d \n", ltick);
 		
                 //send to odometry task
                 sprintf(lticks, "%d", ltick);
                 rt_queue_write(&lqueue, lticks, sizeof(lticks), Q_NORMAL);
+                now = rt_timer_read();
+                if((long)((now - previous)%1000000) > MAX){
+                        MAX = (long)((now - previous)%1000000) ;
+                }
+                rt_printf("WCET Left Encoder: %ld \n", MAX);
 
 
         }
@@ -174,7 +188,8 @@ void Odo(void *arg){
 	double dtick_l = 0;
 	char r_mesg[40], l_mesg[40];
 	int r_tick, l_tick;
-
+	RTIME now, previous;
+	long MAX = 0;
         double Dr, Dc, Dl, x, y, theta, x_dt, y_dt, theta_dt, x_new, y_new, theta_new;
 
 	Dr = Dc = Dl = 0;
@@ -186,7 +201,7 @@ void Odo(void *arg){
 
 	while(1){
 		rt_task_wait_period(NULL);
-	
+		previous = rt_timer_read();
 		rt_queue_read(&rqueue, r_mesg, sizeof(r_mesg), TM_INFINITE);
 		rt_queue_read(&lqueue, l_mesg, sizeof(l_mesg), TM_INFINITE);
 
@@ -218,8 +233,13 @@ void Odo(void *arg){
 		y = y_new;
 		theta = theta_new;
 
-		rt_printf("Robot pose (x, y, theta) is: %lf, %lf, %lf\n", x, y, theta);
-		
+//		rt_printf("Robot pose (x, y, theta) is: %lf, %lf, %lf\n", x, y, theta);
+		now = rt_timer_read();
+                if((long)((now - previous)%1000000) > MAX){
+                        MAX = (long)((now - previous)%1000000) ;
+                }
+                rt_printf("WCET Odometry: %ld \n", MAX);
+
 
 	}
 
@@ -229,6 +249,7 @@ void rMotor(void *arg)
         RT_TASK *curtask;
         RT_TASK_INFO curtaskinfo;
 	RTIME now, previous;
+	long MAX = 0;
 	int fd = open("/dev/mem",O_RDWR | O_SYNC);
     	ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);	
 	pinconf1[OE_ADDR/4] &= pinconf1[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1 << 28)|(1<<16)|(1<<17))); 
@@ -237,15 +258,20 @@ void rMotor(void *arg)
      	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 16); // clear pin P9_15
 	rt_task_set_periodic(NULL, TM_NOW, period1);
   //      rt_printf("Controling Right Motors!\n");
-	previous = rt_timer_read();
+	//previous = rt_timer_read();
 	while (1){
                 rt_task_wait_period(NULL);
-		now = rt_timer_read();
+		previous = rt_timer_read();
 		pinconf1[GPIO_DATAOUT/4] |= (1 << 17); //PWM on pin P9_23
 		rt_task_sleep(duty1);
 		pinconf1[GPIO_DATAOUT/4] &= ~(1 << 17); //toggle pin
 //		rt_printf("right Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
-		previous = now;
+		                now = rt_timer_read();
+                if((long)((now - previous)%1000000) > MAX){
+                        MAX = (long)((now - previous)%1000000) ;
+                }
+                rt_printf("WCET Right Motor: %ld \n", MAX);
+
 	}
 }
 
@@ -254,6 +280,7 @@ void lMotor(void *arg)
         RT_TASK *curtask;
         RT_TASK_INFO curtaskinfo;
         RTIME now, previous;
+	long MAX = 0;
         int fd = open("/dev/mem",O_RDWR | O_SYNC);
         ulong* pinconf2 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO2_ADDR);     
         pinconf2[OE_ADDR/4] &= pinconf2[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1<<2)|(1 << 3)|(1<<5))); 
@@ -262,15 +289,20 @@ void lMotor(void *arg)
      	pinconf2[GPIO_DATAOUT/4]  &= ~(1 << 3); // clear pin P8_8
         rt_task_set_periodic(NULL, TM_NOW, period2);
         rt_printf("Controling Left Motors!\n");
-        previous = rt_timer_read();
+        //previous = rt_timer_read();
         while (1){
                 rt_task_wait_period(NULL);
-                now = rt_timer_read();
+                previous = rt_timer_read();
                 pinconf2[GPIO_DATAOUT/4] |= (1 << 5); //PWM on pin P8_9
                 rt_task_sleep(duty2);
                 pinconf2[GPIO_DATAOUT/4] &= ~(1 << 5); //toggle pin
-                rt_printf("Left Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
-                previous = now;
+//                rt_printf("Left Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
+                now = rt_timer_read();
+                if((long)((now - previous)%1000000) > MAX){
+                        MAX = (long)((now - previous)%1000000) ;
+                }
+                rt_printf("WCET Left Motor: %ld \n", MAX);
+
         }
 }
 
@@ -329,32 +361,32 @@ void init_xenomai(){
 
 void startup(){
 
-//	rt_queue_create(&rqueue, "rQueue", QUEUE_SIZE, 40, Q_FIFO);
-//        rt_queue_create(&lqueue, "lQueue", QUEUE_SIZE, 40, Q_FIFO);
+	rt_queue_create(&rqueue, "rQueue", QUEUE_SIZE, 40, Q_FIFO);
+        rt_queue_create(&lqueue, "lQueue", QUEUE_SIZE, 40, Q_FIFO);
 
         rt_task_create(&rEnc_task, "rEnc Task", 0, 70, 0);
         rt_task_start(&rEnc_task, &rEnc, 0);
  
-//        rt_task_create(&lEnc_task, "lEnc Task", 0, 70, 0);
-//        rt_task_start(&lEnc_task, &lEnc, 0);
+        rt_task_create(&lEnc_task, "lEnc Task", 0, 70, 0);
+        rt_task_start(&lEnc_task, &lEnc, 0);
  
-        //rt_task_create(&Odo_task, "Odo Task", 0, 50, 0);
-        //rt_task_start(&Odo_task, &Odo, 0);
+        rt_task_create(&Odo_task, "Odo Task", 0, 50, 0);
+        rt_task_start(&Odo_task, &Odo, 0);
 
 	rt_task_create(&rMotor_task, "rMotor", 0, 50, 0);
 	rt_task_start(&rMotor_task, &rMotor, 0);
  
-//        rt_task_create(&lMotor_task, "lMotor", 0, 50, 0);
-//        rt_task_start(&lMotor_task, &lMotor, 0);
+        rt_task_create(&lMotor_task, "lMotor", 0, 50, 0);
+        rt_task_start(&lMotor_task, &lMotor, 0);
 
-//        rt_task_create(&stop_lMotor, "stoplMotor", 0, 99, 0);
-//        rt_task_create(&stop_rMotor, "stoprMotor", 0, 99, 0);
+        rt_task_create(&stop_lMotor, "stoplMotor", 0, 99, 0);
+        rt_task_create(&stop_rMotor, "stoprMotor", 0, 99, 0);
 
-//	rt_task_create(&dummy_task1, "dummy 1", 0, 0, 0);
- //       rt_task_start(&dummy_task1, &dummy1, 0);
+	rt_task_create(&dummy_task1, "dummy 1", 0, 0, 0);
+        rt_task_start(&dummy_task1, &dummy1, 0);
 
-//        rt_task_create(&dummy_task2, "dummy 2", 0, 0, 0);
-//        rt_task_start(&dummy_task2, &dummy2, 0);
+        rt_task_create(&dummy_task2, "dummy 2", 0, 0, 0);
+        rt_task_start(&dummy_task2, &dummy2, 0);
 
 
 }
