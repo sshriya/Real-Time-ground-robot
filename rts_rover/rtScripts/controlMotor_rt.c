@@ -21,6 +21,7 @@ PWM 1 - P8_9 - GPIO2[5]
 #include <native/timer.h>
 #include <rtdk.h>
 #include <signal.h>
+#include <time.h>
 
 #define OE_ADDR 0x134
 #define GPIO_DATAOUT 0x13C
@@ -38,6 +39,31 @@ PWM 1 - P8_9 - GPIO2[5]
 
 RT_TASK rMotor_task;
 RT_TASK lMotor_task;
+RT_TASK stop_rMotor;
+RT_TASK stop_lMotor;
+
+void stoprMotor(void *arg){
+	int fd = open("/dev/mem",O_RDWR | O_SYNC);
+    	ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);	
+	pinconf1[OE_ADDR/4] &= pinconf1[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1 << 28)|(1<<16)|(1<<17)|(1<<5)|(1<<4)|(1<<1))); 
+	//configure logic pins
+	rt_printf("stop r motor\n");
+     	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 28); //clear pin  P9_12
+     	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 16); // clear pin P9_15
+        pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 17); // clear pin P9_15
+}
+
+void stoplMotor(void *arg)
+{
+        int fd = open("/dev/mem",O_RDWR | O_SYNC);
+        ulong* pinconf2 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO2_ADDR);     
+        pinconf2[OE_ADDR/4] &= pinconf2[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1<<2)|(1 << 3)|(1<<5))); 
+        //configure logic pins
+	rt_printf("stop l motor\n");
+        pinconf2[GPIO_DATAOUT/4]  &= ~(1 << 2); //set pin  P8_7
+     	pinconf2[GPIO_DATAOUT/4]  &= ~(1 << 3); // clear pin P8_8
+        pinconf2[GPIO_DATAOUT/4] &= ~(1<<5);
+}
 
 
 void rMotor(void *arg)
@@ -47,10 +73,10 @@ void rMotor(void *arg)
 	RTIME now, previous;
 	int fd = open("/dev/mem",O_RDWR | O_SYNC);
     	ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);	
-	pinconf1[OE_ADDR/4] &= pinconf1[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1 << 28)|(1<<16)|(1<<17)|(1<<5)|(1<<4)|(1<<1))); 
+	pinconf1[OE_ADDR/4] &= pinconf1[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1 << 28)|(1<<16)|(1<<17))); 
 	//configure logic pins
      	pinconf1[GPIO_DATAOUT/4]  |= (1 << 28); //set pin  P9_12
-     	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 17); // clear pin P9_15
+     	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 16); // clear pin P9_15
 	rt_task_set_periodic(NULL, TM_NOW, period1);
         rt_printf("Controling Right Motors!\n");
 	previous = rt_timer_read();
@@ -59,7 +85,7 @@ void rMotor(void *arg)
 		now = rt_timer_read();
 		pinconf1[GPIO_DATAOUT/4] |= (1 << 17); //PWM on pin P9_23
 		rt_task_sleep(duty1);
-		pinconf1[GPIO_DATAOUT/4] ^= (1 << 17); //toggle pin
+		pinconf1[GPIO_DATAOUT/4] &= ~(1 << 17); //toggle pin
 		rt_printf("right Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
 		previous = now;
 	}
@@ -84,18 +110,20 @@ void lMotor(void *arg)
                 now = rt_timer_read();
                 pinconf2[GPIO_DATAOUT/4] |= (1 << 5); //PWM on pin P8_9
                 rt_task_sleep(duty2);
-                pinconf2[GPIO_DATAOUT/4] ^= (1 << 5); //toggle pin
+                pinconf2[GPIO_DATAOUT/4] &= ~(1 << 5); //toggle pin
                 rt_printf("Left Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
                 previous = now;
         }
 }
 
-int main(){
-    	char str[10];
+void init_xenomai(){
 	rt_print_auto_init(1);
-	mlockall(MCL_CURRENT|MCL_FUTURE);
-	rt_printf("start task\n");
-	
+        mlockall(MCL_CURRENT|MCL_FUTURE);
+}
+
+int startup(){
+    	char str[10];
+		
 	sprintf(str, "rMotor");
 	//&task, name, stack size (0 - default), priority, mode 
 	rt_task_create(&rMotor_task, str, 0, 50, 0);
@@ -106,9 +134,56 @@ int main(){
         rt_task_create(&lMotor_task, str, 0, 50, 0);
         rt_task_start(&lMotor_task, &lMotor, 0);
 
-	rt_printf("end program : ctrl+c\n");
-	pause();
+        sprintf(str, "StoplMotor"); 
+        rt_task_create(&stop_lMotor, str, 0, 50, 0);
 
-	rt_task_delete(&lMotor_task);
-	rt_task_delete(&rMotor_task);
+        sprintf(str, "StoprMotor"); 
+        rt_task_create(&stop_rMotor, str, 0, 50, 0);
+}
+
+void catch_signal(int sig){
+}
+
+void wait_for_ctrl_c(){
+	signal(SIGTERM, catch_signal);
+	signal(SIGINT, catch_signal);
+
+	//wait for CTRL+C
+	pause();
+}
+
+void cleanup(){
+
+        rt_task_start(&stop_lMotor, &stoplMotor, 0);
+        rt_task_start(&stop_rMotor, &stoprMotor, 0);
+
+        rt_task_delete(&lMotor_task);
+        rt_task_delete(&rMotor_task);
+	rt_task_delete(&stop_lMotor);
+	rt_task_delete(&stop_rMotor);
+
+}
+
+int main(int argc, char* argv[])
+{
+
+	double timeD;
+	time_t begin, end;
+	printf("\n Press Ctrl+c to quit\n\n");
+
+	init_xenomai();
+
+	startup();
+
+	begin = time(NULL);
+	while(timeD < 3){
+		end = time(NULL);
+		timeD = (end - begin);	
+	}
+	//wait_for_ctrl_c();
+
+	cleanup();
+
+	printf("\n Ending program!\n\n");
+
 }

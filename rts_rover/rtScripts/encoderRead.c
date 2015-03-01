@@ -25,7 +25,7 @@ Encoder l - A: P8_15
 #include <rtdk.h>
 #include <signal.h>
 
-#define period 1000000
+#define period 100000
 
 RT_TASK rEnc_task;
 RT_TASK lEnc_task;
@@ -133,9 +133,9 @@ void startup(){
         rt_task_start(&rEnc_task, &rEnc, 0);
 
         //&task, name, stack size (0 - default), priority, mode 
-        rt_task_create(&lEnc_task, "lEnc Task", 0, 50, 0);
+//        rt_task_create(&lEnc_task, "lEnc Task", 0, 50, 0);
         //&task, task function, function argument
-        rt_task_start(&lEnc_task, &lEnc, 0);
+//        rt_task_start(&lEnc_task, &lEnc, 0);
 
 
 }
@@ -153,7 +153,7 @@ void wait_for_ctrl_c(){
 
 void cleanup(){
 	rt_task_delete(&rEnc_task);
-        rt_task_delete(&lEnc_task);
+//        rt_task_delete(&lEnc_task);
 
 }
 

@@ -1,8 +1,14 @@
 /*
- Motor 1 & 3: Right 
+
+Move the robot in two tasks for left motor and right motor
+Measure encoder readings in separate tasks 
+Do localization in yet another task
+
+Motor 1 & 3: Right 
 Logic 1 - P9_12 - GPIO1[28]
 Logic 2 - P9_15 - GPIO1[16]
 PWM 1 - P9_23 - GPIO1[17]
+
 Motor 2 & 4: Left
 Logic 1 - P8_7 - GPIO2[2]
 Logic 2 - P8_8 - GPIO2[3]
@@ -36,12 +42,12 @@ Encoder l - A: P8_15
 #include <native/sem.h>
 #include <math.h>
 
-#define period 1000000
+#define period 100000
 
 #define period1 1000000
 #define period2 1000000
 
-#define duty1 period1*0.25
+#define duty1 period1*0.75
 #define duty2 period2*0.75
 
 #define p1 1000000
@@ -57,9 +63,9 @@ RT_TASK dummy_task2;
 
 
 //robot dimension
-#define R 30
-#define L 185
-#define N 1000/3 //Ticks per revolution
+#define R 30    //Wheel Radius in mm
+#define L 185   //Robot length in mm
+#define N 250/3 //Ticks per revolution
 #define pi 3.14159
 #define m_per_tick 2*pi*R/N
 
@@ -309,16 +315,16 @@ void startup(){
 	rt_queue_create(&rqueue, "rQueue", QUEUE_SIZE, 40, Q_FIFO);
         rt_queue_create(&lqueue, "lQueue", QUEUE_SIZE, 40, Q_FIFO);
 
-        rt_task_create(&rEnc_task, "rEnc Task", 0, 50, 0);
+        rt_task_create(&rEnc_task, "rEnc Task", 0, 0, 0);
         rt_task_start(&rEnc_task, &rEnc, 0);
  
-        rt_task_create(&lEnc_task, "lEnc Task", 0, 50, 0);
+        rt_task_create(&lEnc_task, "lEnc Task", 0, 0, 0);
         rt_task_start(&lEnc_task, &lEnc, 0);
  
-        rt_task_create(&Odo_task, "Odo Task", 0, 60, 0);
+        rt_task_create(&Odo_task, "Odo Task", 0, 0, 0);
         rt_task_start(&Odo_task, &Odo, 0);
 
-	rt_task_create(&rMotor_task, "rMotor", 0, 50, 0);
+	rt_task_create(&rMotor_task, "rMotor", 0, 0, 0);
 	rt_task_start(&rMotor_task, &rMotor, 0);
  
         rt_task_create(&lMotor_task, "lMotor", 0, 50, 0);

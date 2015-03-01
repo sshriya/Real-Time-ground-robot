@@ -28,7 +28,7 @@ Encoder l - A: P8_15
 #include <native/sem.h>
 #include <math.h>
 
-#define period 1000000
+#define period 100000
 
 RT_TASK rEnc_task;
 RT_TASK lEnc_task;
@@ -40,7 +40,7 @@ RT_SEM lsem;
 //robot dimension
 #define R 30
 #define L 185
-#define N 1000/3 //Ticks per revolution
+#define N 250/3 //Ticks per revolution
 #define pi 3.14159
 #define m_per_tick 2*pi*R/N
 

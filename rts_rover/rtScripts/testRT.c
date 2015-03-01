@@ -1,4 +1,10 @@
-/* Control a DC motor:
+/* 
+Application to test a Real time task with a non-RT task execution. This program makes the robot move in a circular trajectory. 
+For a non-RT task, due to dummy tasks, the CPU is overloaded and the execution of circular trjectory fails.
+
+Date: April, 26th , 2016
+Shriya Shah & Arpit Goyal
+Control a DC motor:
 Motor 1 & 3: Right 
 Logic 1 - P9_12 - GPIO1[28]
 Logic 2 - P9_15 - GPIO1[16]
