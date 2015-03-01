@@ -46,12 +46,12 @@ void rEncoder(void *arg)
 
         	rEnc = atoi(val); //return integer value
 
-//        	rt_printf("right Encoder ticks: %d\n", rEnc);
+        	rt_printf("right Encoder ticks: %d\n", rEnc);
 		now = rt_timer_read();
 		if((long)((now - previous)%1000000) > MAX){
 			MAX = (long)((now - previous)%1000000) ;
 		}
-		rt_printf("WCET Right Motor: %ld \n", MAX);
+//		rt_printf("WCET Right Motor: %ld \n", MAX);
 	}
 	return;
 }
@@ -81,12 +81,12 @@ void lEncoder(void *arg)
 
                 lEnc = atoi(val); //return integer value
 
-  //              rt_printf("Left Encoder ticks: %d\n", lEnc);
+                rt_printf("Left Encoder ticks: %d\n", lEnc);
                 now = rt_timer_read();
                 if((long)((now - previous)%1000000) > MAX){
                         MAX = (long)((now - previous)%1000000) ;
                 }
-                rt_printf("WCET left Motor: %ld \n", MAX);
+  //              rt_printf("WCET left Motor: %ld \n", MAX);
         }
         return;
 } 

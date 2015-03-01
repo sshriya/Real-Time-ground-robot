@@ -38,11 +38,12 @@ Encoder l - A: P8_15
 #define GPIO2_ADDR 0x481AC000
 #define GPIO3_ADDR 0x481AF000
 
-#define period1 800000
-#define period2 800000
+#define period1 1000000//800000
+#define period2 1000000//800000
+#define period_gtg 1000000
 
-#define duty1 period1*0.75
-#define duty2 period2*0.75
+#define duty1 period1*0.25
+#define duty2 period2*0.25
 
 #define period 100000
 
@@ -55,12 +56,19 @@ RT_TASK rMotor_task;
 RT_TASK lMotor_task;
 RT_TASK stop_rMotor;
 RT_TASK stop_lMotor;
+RT_TASK gtg_task;
 
 RT_SEM rSem;
 RT_SEM lSem;
+RT_SEM xSem;
+RT_SEM ySem;
+RT_SEM tSem;
 
 int rtick = 0;
 int ltick = 0;
+double x = 0;
+double y = 0;
+double theta = 0;
 
 //robot dimension
 #define R .030
@@ -68,6 +76,58 @@ int ltick = 0;
 #define N 1000/3 //Ticks per revolution
 #define pi 3.14159
 #define m_per_tick 2*pi*R/N
+#define v 0.15 //in m/s
+#define Kp 4
+#define Ki 0.01
+#define Kd 0.01
+
+const int x_g = 1;
+const int y_g = 1;
+
+void gtg(void *arg){
+
+	double u_x, u_y, theta_g;
+	double e_k = 0;
+	double  e_P = 0;
+	double e_D = 0;
+	double e_I = 0;
+	double  e_k_1 = 0;
+	double w = 0;
+	double E_k = 0;
+
+	RTIME prev, now, dt;
+
+	rt_task_set_periodic(NULL, TM_NOW, period_gtg); 
+	prev = rt_timer_read();	
+
+	while(1){
+		rt_task_wait_period(NULL);
+
+		u_x = x_g - x;
+		u_y = y_g - y; 
+		theta_g = atan2(u_y, u_x);
+
+		rt_printf("Goal angle is: %lf\n", theta_g);
+
+		e_k = theta_g - theta;
+		e_k = atan2(sin(e_k), cos(e_k));
+		rt_printf("Error in heading is: %lf\n", e_k);
+	 	now  = rt_timer_read();
+		dt = now-prev;
+		prev = now;
+
+		e_P = e_k;
+		e_I = E_k + e_k*dt;
+		e_D = (e_k - e_k_1)/dt;
+
+		w = Kp*e_P + Ki*e_I + Kd*e_D;
+		E_k = e_I;
+		e_k_1 = e_k;
+		rt_printf("calcualted the error");
+		rt_printf("v and w are: %lf, %lf \n", v, w);
+		//[vel_r_d, vel_l_d] = uni_to_diff(v, w);
+	}
+}
 
 void stoprMotor(void *arg){
 	int fd = open("/dev/mem",O_RDWR | O_SYNC);
@@ -246,7 +306,7 @@ void Odo(void *arg){
 	char r_mesg[40], l_mesg[40];
 	int r_tick, l_tick;
 
-        double Dr, Dc, Dl, x, y, theta, x_dt, y_dt, theta_dt, x_new, y_new, theta_new;
+        double Dr, Dc, Dl, x_dt, y_dt, theta_dt, x_new, y_new, theta_new;
 
 	Dr = Dc = Dl = 0;
 	x = y = theta = 0;
@@ -286,12 +346,18 @@ void Odo(void *arg){
 
 		rtick_prev = r_tick;
 		ltick_prev = l_tick;
-
+		
+		rt_sem_p(&xSem, 0);
 		x = x_new;
+		rt_sem_v(&xSem);
+		rt_sem_p(&ySem, 0);
 		y = y_new;
+		rt_sem_v(&ySem);
+		rt_sem_p(&tSem, 0);
 		theta = theta_new;
+		rt_sem_v(&tSem);
 
-		rt_printf("Robot pose (x, y, theta) is: %lf, %lf, %lf\n", x, y, theta);
+	//	rt_printf("Robot pose (x, y, theta) is: %lf, %lf, %lf\n", x, y, theta);
 		
 
 	}
@@ -311,6 +377,11 @@ void startup(){
 	rt_sem_create(&rSem, "rSem", 1, S_FIFO);
         rt_sem_create(&lSem, "lSem", 1, S_FIFO);
 
+	rt_sem_create(&xSem, "xSem", 1, S_FIFO);
+        rt_sem_create(&ySem, "ySem", 1, S_FIFO);
+        rt_sem_create(&tSem, "tSem", 1, S_FIFO);
+
+
         rt_task_create(&rEncoder_task, "rEnc Task", 0, 50, 0);
         rt_task_start(&rEncoder_task, &rEncoder, 0);
 
@@ -320,6 +391,9 @@ void startup(){
  
         rt_task_create(&Odo_task, "Odo Task", 0, 60, 0);
         rt_task_start(&Odo_task, &Odo, 0);
+ 
+        rt_task_create(&gtg_task, "GTG Task", 0, 70, 0);
+        rt_task_start(&gtg_task, &gtg, 0);
 
     	char str[10];
 	sprintf(str, "rMotor");
@@ -355,6 +429,7 @@ void cleanup(){
         rt_task_delete(&rEncoder_task);
         rt_task_delete(&lEncoder_task);
         rt_task_delete(&Odo_task);
+	rt_task_delete(&gtg_task);
 
         rt_task_start(&stop_lMotor, &stoplMotor, 0);
         rt_task_start(&stop_rMotor, &stoprMotor, 0);
