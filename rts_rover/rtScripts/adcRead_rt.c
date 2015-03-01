@@ -26,21 +26,26 @@ void adc1(void *arg)
 {
 	int adc0, adc1, adc2, adc3, adc4;
 	RTIME now, previous;
+	long MAX = 0;
         rt_task_set_periodic(NULL, TM_NOW, period);
         rt_printf("Reading right Encoder!\n");
 
-	previous = rt_timer_read();
         while (1){
                 rt_task_wait_period(NULL);
-		now = rt_timer_period(NULL)
+		previous = rt_timer_read();
 		adc0 = readADC(0);
 		adc1 = readADC(1);
 		adc2 = readADC(2);
 		adc3 = readADC(3);
 		adc4 = readADC(4);
 
-		rt_printf("ADC0, ADC1, ADC2, ADC3, ADC4: %d, %d, %d, %d, %d \n", adc0, adc1, adc2, adc3, adc4);
-        }
+//		rt_printf("ADC0, ADC1, ADC2, ADC3, ADC4: %d, %d, %d, %d, %d \n", adc0, adc1, adc2, adc3, adc4);
+        	now = rt_timer_read();
+		if((long)((now - previous)%1000000) > MAX){
+			MAX = (long)((now - previous)%1000000) ;
+		}
+		rt_printf("WCET Right Motor: %ld \n", MAX);
+	}
 	return;
 } 
 
@@ -105,12 +110,19 @@ void cleanup(){
 int main(int argc, char* argv[])
 {
 	printf("\n Press Ctrl+c to quit\n\n");
+	double timeD;
+	time_t begin, end;
 
 	init_xenomai();
 
 	startup();
 
-	wait_for_ctrl_c();
+	begin = time(NULL);
+	while(timeD < 3){
+		end = time(NULL);
+		timeD = (end - begin);	
+	}
+	//wait_for_ctrl_c();
 
 	cleanup();
 
