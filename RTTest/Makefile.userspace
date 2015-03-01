@@ -1,0 +1,7 @@
+CFLAGS=-Wall -pthread
+LDFLAGS=-pthread
+LDLIBS=-lrt
+periodic-thread: periodic-thread.o periodic_tasks.o task_bodies.o
+
+clean:
+	rm -f *.o periodic-thread
