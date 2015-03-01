@@ -45,12 +45,12 @@ RT_TASK stop_lMotor;
 void stoprMotor(void *arg){
 	int fd = open("/dev/mem",O_RDWR | O_SYNC);
     	ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);	
-	pinconf1[OE_ADDR/4] &= pinconf1[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1 << 28)|(1<<16)|(1<<17)|(1<<5)|(1<<4)|(1<<1))); 
+	pinconf1[OE_ADDR/4] &= pinconf1[OE_ADDR/4] &= (0xFFFFFFFF ^ ((1 << 28)|(1<<16)|(1<<17))); 
 	//configure logic pins
 	rt_printf("stop r motor\n");
      	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 28); //clear pin  P9_12
      	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 16); // clear pin P9_15
-        pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 17); // clear pin P9_15
+        pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 17); // clear pin P9_23
 }
 
 void stoplMotor(void *arg)
