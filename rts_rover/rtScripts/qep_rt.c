@@ -23,14 +23,24 @@ RT_TASK lEncoder_task;
 
 void rEncoder(void *arg)
 {
-	int rEnc, lEnc, fd;
+	long rEnc, lEnc, fd, rBias;
         char buf[MAX_BUF];
-        char val[4]; //stores 4 digits ADC value
+        char val[14]; //stores 4 digits ADC value
         snprintf(buf, sizeof(buf), "/sys/devices/ocp.3/48302000.epwmss/48302180.eqep/position");
 	RTIME now, previous;
 	long MAX = 0;
         rt_task_set_periodic(NULL, TM_NOW, period);
         rt_printf("Reading right Encoder!\n");
+	fd = open(buf, O_RDONLY); //Open ADC as read only
+
+                if(fd < 0){
+                        perror("Problem opening right Encoder");
+                }
+
+         read(fd, &val, 15); //read upto 4 digits 0-1799
+         close(fd);
+
+         rBias = atoi(val); //return integer value
 
         while (1){
                 rt_task_wait_period(NULL);
@@ -41,10 +51,10 @@ void rEncoder(void *arg)
                 	perror("Problem opening ADC");
         	}
 
-        	read(fd, &val, 4); //read upto 4 digits 0-1799
+        	read(fd, &val, 15); //read upto 4 digits 0-1799
         	close(fd);
 
-        	rEnc = atoi(val); //return integer value
+        	rEnc = rBias - atoi(val); //return integer value
 
         	rt_printf("right Encoder ticks: %d\n", rEnc);
 		now = rt_timer_read();
@@ -58,14 +68,24 @@ void rEncoder(void *arg)
 
 void lEncoder(void *arg)
 {
-        int rEnc, lEnc, fd;
+        int rEnc, lEnc, fd, lBias;
         char buf[MAX_BUF];
-        char val[4]; //stores 4 digits ADC value
+        char val[15]; //stores 4 digits ADC value
         snprintf(buf, sizeof(buf), "/sys/devices/ocp.3/48304000.epwmss/48304180.eqep/position");
         RTIME now, previous;
         long MAX = 0;
         rt_task_set_periodic(NULL, TM_NOW, period);
         rt_printf("Reading Left Encoder!\n");
+        fd = open(buf, O_RDONLY); //Open ADC as read only
+
+                if(fd < 0){
+                        perror("Problem opening left Encoder");
+                }
+
+         read(fd, &val, 15); //read upto 4 digits 0-1799
+         close(fd);
+
+         lBias = atoi(val); //return integer value
 
         while (1){
                 rt_task_wait_period(NULL);
@@ -76,10 +96,10 @@ void lEncoder(void *arg)
                         perror("Problem opening ADC");
                 }
 
-                read(fd, &val, 4); //read upto 4 digits 0-1799
+                read(fd, &val, 15); //read upto 4 digits 0-1799
                 close(fd);
 
-                lEnc = atoi(val); //return integer value
+                lEnc = lBias - atoi(val); //return integer value
 
                 rt_printf("Left Encoder ticks: %d\n", lEnc);
                 now = rt_timer_read();

@@ -43,7 +43,6 @@ Encoder l - A: P8_15
 #define period_encoder 10000000 //10 ms
 #define period_gtg 10000000 //10 ms
 #define period_odo 10000000 //10 ms
-#define period_testGoal 10000000 // 5ms
 
 #define dutyL period_motor*.35
 #define dutyR period_motor*.35
@@ -84,14 +83,11 @@ double pwm_l = 0;
 #define pi 3.14159
 #define m_per_tick 2*pi*R/N //5.654e-4
 #define v 0.15 //max is 6.66
-#define Kp 4
+#define Kp 1
 #define Ki 0
 #define Kd 0.01
 #define max_duty 0.35
 #define min_duty 0
-
-#define x_min 0.001
-#define y_min 0.001
 
 //maximum velocities
 #define max_rpm 200 //130
@@ -102,31 +98,26 @@ double pwm_l = 0;
 int map(double);
 
 // Define Goal position
-const double x_g = .1;
-const double y_g = -.1;
+const int x_g = 1;
+const int y_g = 1;
 
-void testGoal(void *arg){
-	double error_pos_x, error_pos_y;
         RTIME prev, now, dt;
         RTIME previous, now_wcet;
         long MAX = 0;
         int flag = 1;
 
-        rt_task_set_periodic(NULL, TM_NOW, period_testGoal); 
+        rt_task_set_periodic(NULL, TM_NOW, period_gtg); 
         prev = rt_timer_read(); 
 
         while(1){
                 rt_task_wait_period(NULL);
-                previous = rt_timer_read();
-		error_pos_x = x_g - x;
-		error_pos_y = y_g -y;
-		rt_printf("Error in x and y are: %lf %lf \n", error_pos_x, error_pos_y);
+void testGoal(void *arg){
+	double error_pos_x, error_pos_y;
 
-		if(((-x_min < error_pos_x) && (error_pos_x < x_min)) && ((error_pos_y < y_min) && (error_pos_y > -y_min))){
-			rt_printf("At a goal");
-			cleanup();
-		}
-}
+	error_pos_x = x_g - x;
+	error_pos_y = y_g - y;
+
+	rt_printf("error is x is %lf , error in y is %lf \n", error_pos_x, error_pos_y);
 }
 
 void gtg(void *arg){
@@ -528,7 +519,6 @@ void startup(){
         rt_sem_create(&rPwm, "rPwm", 1, S_FIFO);
         rt_sem_create(&lPwm, "lPwm", 1, S_FIFO);
        
-	rt_task_create(&testGoal_task, "check Goal", 0, 50, 0);
         rt_task_create(&rMotor_task, "rMotor", 0, 70, 0);
         rt_task_create(&lMotor_task, "lMotor", 0, 70, 0);
         rt_task_create(&stop_lMotor, "StoplMotor", 0, 90, 0);
@@ -538,13 +528,13 @@ void startup(){
         rt_task_create(&Odo_task, "Odo Task", 0, 60, 0);
         rt_task_create(&gtg_task, "GTG Task", 0, 61, 0);
 
-	rt_task_start(&testGoal_task, &testGoal, 0);
         rt_task_start(&rMotor_task, &rMotor, 0);
         rt_task_start(&lMotor_task, &lMotor, 0);
         rt_task_start(&rEncoder_task, &rEncoder, 0);
       	rt_task_start(&lEncoder_task, &lEncoder, 0);
         rt_task_start(&Odo_task, &Odo, 0);
         rt_task_start(&gtg_task, &gtg, 0);
+
 }
 
 void catch_signal(int sig){
@@ -571,7 +561,6 @@ void cleanup(){
         rt_task_delete(&rMotor_task);
 	rt_task_delete(&stop_lMotor);
 	rt_task_delete(&stop_rMotor);
-	rt_task_delete(&testGoal_task);
 
 }
 
@@ -586,12 +575,12 @@ int main(int argc, char* argv[])
 	init_xenomai();
 
 	startup();
-/*	begin = time(NULL);
+	begin = time(NULL);
 	while(timeD < 10){
 		end = time(NULL);
 		timeD = (end - begin);	
 	}
-*/	wait_for_ctrl_c();
+	//wait_for_ctrl_c();
 
 	cleanup();
 
