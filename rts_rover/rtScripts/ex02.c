@@ -100,22 +100,29 @@ int main(int argc, char* argv[])
 	//&task, name, stack size (0 - default), priority, mode 
 	rt_task_create(&demo_task1, str, 0, 10, 0);
 	//&task, task function, function argument
-	rt_task_start(&demo_task1, &demo1, 0);
+	//rt_task_start(&demo_task1, &demo1, 0);
 
         sprintf(str, "task 3");
         rt_task_create(&demo_task3, str, 0, 30, 0);
-        rt_task_start(&demo_task3, &demo3, 0);
+        //rt_task_start(&demo_task3, &demo3, 0);
 
         sprintf(str, "task 4");
         rt_task_create(&demo_task4, str, 0, 40, 0);
-        rt_task_start(&demo_task4, &demo4, 0);
+        //rt_task_start(&demo_task4, &demo4, 0);
 
         sprintf(str, "task 5");
         rt_task_create(&demo_task5, str, 0, 50, 0);
-        rt_task_start(&demo_task5, &demo5, 0);
+        //rt_task_start(&demo_task5, &demo5, 0);
 
         sprintf(str, "task 2");
         rt_task_create(&demo_task2, str, 0, 20, 0);
+        rt_task_start(&demo_task1, &demo1, 0);
+
         rt_task_start(&demo_task2, &demo2, 0);
+        rt_task_start(&demo_task3, &demo3, 0);
+        rt_task_start(&demo_task4, &demo4, 0);
+        rt_task_start(&demo_task5, &demo5, 0);
+
+        //rt_task_start(&demo_task1, &demo1, 0);
 
 }
