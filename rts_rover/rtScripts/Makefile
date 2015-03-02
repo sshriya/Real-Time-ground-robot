@@ -1,7 +1,7 @@
 ###### CONFIGURATION ######
 
 ### List of applications to be build
-APPLICATIONS = ex01 gpio
+APPLICATIONS = ex01 ex02 ex03 gpio
 
 ### Note: to override the search path for the xeno-config script, use "make XENO=..."
 
