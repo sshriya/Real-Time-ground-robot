@@ -63,23 +63,34 @@ RT_SEM lSem;
 RT_SEM xSem;
 RT_SEM ySem;
 RT_SEM tSem;
+RT_SEM rPwm;
+RT_SEM lPwm;
 
 int rtick = 0;
 int ltick = 0;
 double x = 0;
 double y = 0;
 double theta = 0;
+double pwm_r = 0;
+double pwm_l = 0;
 
 //robot dimension
 #define R .030
+#define width .153
 #define L .185
 #define N 1000/3 //Ticks per revolution
 #define pi 3.14159
 #define m_per_tick 2*pi*R/N
 #define v 0.15 //in m/s
-#define Kp 4
-#define Ki 0.01
+#define Kp 1
+#define Ki 0
 #define Kd 0.01
+#define max_duty 0.75
+#define max_vel 0.18
+#define w_max 0.20 //in rad/sec
+#define w_min -0.20 
+
+int map(double);
 
 const int x_g = 1;
 const int y_g = 1;
@@ -94,6 +105,7 @@ void gtg(void *arg){
 	double  e_k_1 = 0;
 	double w = 0;
 	double E_k = 0;
+	double vel_r, vel_l;
 
 	RTIME prev, now, dt;
 
@@ -123,10 +135,35 @@ void gtg(void *arg){
 		w = Kp*e_P + Ki*e_I + Kd*e_D;
 		E_k = e_I;
 		e_k_1 = e_k;
-		rt_printf("calcualted the error");
-		rt_printf("v and w are: %lf, %lf \n", v, w);
-		//[vel_r_d, vel_l_d] = uni_to_diff(v, w);
+//		rt_printf("v and w are: %lf, %lf \n", v, w);
+		
+		if (w > w_max){
+			w = w_max;
+		}else if(w < w_min){
+			w = w_min;
+		}	
+                rt_printf("v and w are: %lf, %lf \n", v, w);
+
+		//uni to diff
+		vel_r = (2*v + w*L)/(2*R);
+		vel_l = (2*v - w*L)/(2*R);
+		rt_printf("vel_r and vel_l are: %lf, %lf \n", vel_r, vel_l);
+		//get pwm values input:0-v and output 0-.75% 
+		rt_sem_p(&rPwm, 0);
+		pwm_r =  (max_duty/max_vel)*vel_r;
+		rt_sem_v(&rPwm);
+
+		rt_sem_p(&lPwm, 0);
+		pwm_l = (max_duty/max_vel)*vel_l;
+		rt_sem_v(&lPwm);
+
+		rt_printf("pwmr: %lf, pwml: %lf \n", pwm_r, pwm_l);
+		
 	}
+}
+
+int map(double vel){
+	return (max_duty/max_vel)/vel;
 }
 
 void stoprMotor(void *arg){
@@ -218,7 +255,7 @@ void lMotor(void *arg)
 
 void rEncoder(void *arg)
 {
-	int rEnc, lEnc, fd;
+	int rEnc, lEnc, fd, rBias;
         char buf[MAX_BUF];
         char val[4]; //stores 4 digits ADC value
         snprintf(buf, sizeof(buf), "/sys/devices/ocp.3/48302000.epwmss/48302180.eqep/position");
@@ -226,6 +263,18 @@ void rEncoder(void *arg)
 	long MAX = 0;
         rt_task_set_periodic(NULL, TM_NOW, period);
         rt_printf("Reading right Encoder!\n");
+	
+	fd = open(buf, O_RDONLY); //Open ADC as read only
+
+                if(fd < 0){
+                        perror("Problem opening right Encoder");
+                }
+
+         read(fd, &val, 4); //read upto 4 digits 0-1799
+         close(fd);
+
+         rBias = atoi(val); //return integer value
+
 
         while (1){
                 rt_task_wait_period(NULL);
@@ -239,12 +288,12 @@ void rEncoder(void *arg)
         	read(fd, &val, 4); //read upto 4 digits 0-1799
         	close(fd);
 
-        	rEnc = atoi(val); //return integer value
+        	rEnc = rBias - atoi(val); //return integer value
 		
 		rt_sem_p(&rSem, 0);
 		rtick = rEnc;
 		rt_sem_v(&rSem);
-//        	rt_printf("right Encoder ticks: %d\n", rtick);
+        	rt_printf("right Encoder ticks: %d\n", rtick);
 		now = rt_timer_read();
 		if((long)((now - previous)%1000000) > MAX){
 			MAX = (long)((now - previous)%1000000) ;
@@ -258,7 +307,7 @@ void rEncoder(void *arg)
 
 void lEncoder(void *arg)
 {
-        int rEnc, lEnc, fd;
+        int rEnc, lEnc, fd, lBias;
         char buf[MAX_BUF];
         char val[4]; //stores 4 digits ADC value
         snprintf(buf, sizeof(buf), "/sys/devices/ocp.3/48304000.epwmss/48304180.eqep/position");
@@ -266,6 +315,16 @@ void lEncoder(void *arg)
         long MAX = 0;
         rt_task_set_periodic(NULL, TM_NOW, period);
         rt_printf("Reading Left Encoder!\n");
+        fd = open(buf, O_RDONLY); //Open ADC as read only
+
+                if(fd < 0){
+                        perror("Problem opening left Encoder");
+                }
+
+         read(fd, &val, 4); //read upto 4 digits 0-1799
+         close(fd);
+
+         lBias = atoi(val); //return integer value
 
         while (1){
                 rt_task_wait_period(NULL);
@@ -279,12 +338,12 @@ void lEncoder(void *arg)
                 read(fd, &val, 4); //read upto 4 digits 0-1799
                 close(fd);
 
-                lEnc = atoi(val); //return integer value
+                lEnc = lBias - atoi(val); //return integer value
                 rt_sem_p(&lSem, 0);
                 ltick = lEnc;
                 rt_sem_v(&lSem);
 
-  //              rt_printf("Left Encoder ticks: %d\n", ltick);
+                rt_printf("Left Encoder ticks: %d\n", ltick);
                 now = rt_timer_read();
                 if((long)((now - previous)%1000000) > MAX){
                         MAX = (long)((now - previous)%1000000) ;
@@ -357,7 +416,7 @@ void Odo(void *arg){
 		theta = theta_new;
 		rt_sem_v(&tSem);
 
-	//	rt_printf("Robot pose (x, y, theta) is: %lf, %lf, %lf\n", x, y, theta);
+		rt_printf("Robot pose (x, y, theta) is: %lf, %lf, %lf\n", x, y, theta);
 		
 
 	}
@@ -376,11 +435,11 @@ void startup(){
 	
 	rt_sem_create(&rSem, "rSem", 1, S_FIFO);
         rt_sem_create(&lSem, "lSem", 1, S_FIFO);
-
 	rt_sem_create(&xSem, "xSem", 1, S_FIFO);
         rt_sem_create(&ySem, "ySem", 1, S_FIFO);
         rt_sem_create(&tSem, "tSem", 1, S_FIFO);
-
+        rt_sem_create(&rPwm, "rPwm", 1, S_FIFO);
+        rt_sem_create(&lPwm, "lPwm", 1, S_FIFO);
 
         rt_task_create(&rEncoder_task, "rEnc Task", 0, 50, 0);
         rt_task_start(&rEncoder_task, &rEncoder, 0);
@@ -397,12 +456,12 @@ void startup(){
 
     	char str[10];
 	sprintf(str, "rMotor");
-	rt_task_create(&rMotor_task, str, 0, 50, 0);
-	rt_task_start(&rMotor_task, &rMotor, 0);
+	//rt_task_create(&rMotor_task, str, 0, 50, 0);
+	//rt_task_start(&rMotor_task, &rMotor, 0);
 
         sprintf(str, "lMotor"); 
-        rt_task_create(&lMotor_task, str, 0, 50, 0);
-        rt_task_start(&lMotor_task, &lMotor, 0);
+        //rt_task_create(&lMotor_task, str, 0, 50, 0);
+        //rt_task_start(&lMotor_task, &lMotor, 0);
 
         sprintf(str, "StoplMotor"); 
         rt_task_create(&stop_lMotor, str, 0, 90, 0);
