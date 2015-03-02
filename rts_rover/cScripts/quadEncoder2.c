@@ -26,13 +26,13 @@ using namespace std;
 //bool read_rEncoder(*, char);
 
 int main(){
-    int i = 0;
-    int rPose = 0;
+
+    int rtick = 0;
+    bool rBSet;
     int r_last = LOW;
     int inr = 0;
     int inrB = 0;
-    char logicA = '1';
-    char logicB = '2';
+
     int fd = open("/dev/mem",O_RDWR | O_SYNC);
     ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);
     //configure encoder pins as input
@@ -50,25 +50,11 @@ int main(){
                 }
 
 
-		if((r_last == LOW)&&(inr == HIGH)){
-			if(pinconf1[GPIO_DATAIN/4] & (1 << 12)) {
-//	                        cout << "B is HIGH" << endl;
-        	                inrB = HIGH;
-                	}else{
-//                        	cout << "B is low" << endl;
-                        	inrB = LOW;
-                	}
-
-			if(inrB == LOW){
-		//		cout << "increasing" << endl;
-				rPose--;
-			}else{
-		//		cout << "decreasing" << endl;
-				rPose++;
+		if(((r_last == LOW)&&(inr == HIGH)) || ((r_last == HIGH)&&(inr == LOW))){
+				rtick++;
 			}
-		}
 		r_last = inr;
-		cout << rPose << endl;
+		cout << rtick << endl;
 //		sleep(.01);
 	}
 }

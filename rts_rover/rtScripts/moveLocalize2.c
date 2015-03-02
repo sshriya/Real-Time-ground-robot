@@ -48,8 +48,8 @@ Encoder l - A: P8_15
 #define period1 1000000
 #define period2 1000000
 
-#define duty1 period1*0.20
-#define duty2 period2*0.20
+#define duty1 period1*0.10
+#define duty2 period2*0.10
 
 #define p1 1000000
 #define p2 1000000
@@ -91,7 +91,7 @@ void rEnc(void *arg)
     	pinconf1[OE_ADDR/4]  |= ((1<<13)|(1 << 12)); //P8_11, P8_12, P8_15, P8_16   
 
         rt_task_set_periodic(NULL, TM_NOW, period);
-//        rt_printf("Reading right Encoder!\n");
+        rt_printf("Reading right Encoder!\n");
 
         while (1){
                 rt_task_wait_period(NULL);
@@ -103,8 +103,18 @@ void rEnc(void *arg)
                 }
 
 
-		if(((r_last == LOW)&&(inr == HIGH)) || ((r_last == HIGH)&&(inr == LOW))){
-			rtick++;
+		if((r_last == LOW)&&(inr == HIGH)){
+			if(pinconf1[GPIO_DATAIN/4] & (1 << 12)) {
+        	                inrB = HIGH;
+                	}else{
+                        	inrB = LOW;
+                	}
+
+			if(inrB == LOW){
+				rtick--;
+			}else{
+				rtick++;
+			}
 		}
 		r_last = inr;
 		rt_printf("Right ticks: %d \n", rtick);
@@ -236,7 +246,7 @@ void rMotor(void *arg)
      	pinconf1[GPIO_DATAOUT/4]  |= (1 << 28); //set pin  P9_12
      	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 16); // clear pin P9_15
 	rt_task_set_periodic(NULL, TM_NOW, period1);
-  //      rt_printf("Controling Right Motors!\n");
+        rt_printf("Controling Right Motors!\n");
 	previous = rt_timer_read();
 	while (1){
                 rt_task_wait_period(NULL);
@@ -244,7 +254,7 @@ void rMotor(void *arg)
 		pinconf1[GPIO_DATAOUT/4] |= (1 << 17); //PWM on pin P9_23
 		rt_task_sleep(duty1);
 		pinconf1[GPIO_DATAOUT/4] &= ~(1 << 17); //toggle pin
-//		rt_printf("right Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
+		rt_printf("right Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
 		previous = now;
 	}
 }
@@ -329,14 +339,14 @@ void init_xenomai(){
 
 void startup(){
 
-//	rt_queue_create(&rqueue, "rQueue", QUEUE_SIZE, 40, Q_FIFO);
-//        rt_queue_create(&lqueue, "lQueue", QUEUE_SIZE, 40, Q_FIFO);
+	rt_queue_create(&rqueue, "rQueue", QUEUE_SIZE, 40, Q_FIFO);
+        rt_queue_create(&lqueue, "lQueue", QUEUE_SIZE, 40, Q_FIFO);
 
         rt_task_create(&rEnc_task, "rEnc Task", 0, 70, 0);
         rt_task_start(&rEnc_task, &rEnc, 0);
  
-//        rt_task_create(&lEnc_task, "lEnc Task", 0, 70, 0);
-//        rt_task_start(&lEnc_task, &lEnc, 0);
+        rt_task_create(&lEnc_task, "lEnc Task", 0, 70, 0);
+        rt_task_start(&lEnc_task, &lEnc, 0);
  
         //rt_task_create(&Odo_task, "Odo Task", 0, 50, 0);
         //rt_task_start(&Odo_task, &Odo, 0);
@@ -344,17 +354,17 @@ void startup(){
 	rt_task_create(&rMotor_task, "rMotor", 0, 50, 0);
 	rt_task_start(&rMotor_task, &rMotor, 0);
  
-//        rt_task_create(&lMotor_task, "lMotor", 0, 50, 0);
-//        rt_task_start(&lMotor_task, &lMotor, 0);
+        rt_task_create(&lMotor_task, "lMotor", 0, 50, 0);
+        rt_task_start(&lMotor_task, &lMotor, 0);
 
-//        rt_task_create(&stop_lMotor, "stoplMotor", 0, 99, 0);
-//        rt_task_create(&stop_rMotor, "stoprMotor", 0, 99, 0);
+        rt_task_create(&stop_lMotor, "stoplMotor", 0, 99, 0);
+        rt_task_create(&stop_rMotor, "stoprMotor", 0, 99, 0);
 
-//	rt_task_create(&dummy_task1, "dummy 1", 0, 0, 0);
- //       rt_task_start(&dummy_task1, &dummy1, 0);
+	rt_task_create(&dummy_task1, "dummy 1", 0, 0, 0);
+        rt_task_start(&dummy_task1, &dummy1, 0);
 
-//        rt_task_create(&dummy_task2, "dummy 2", 0, 0, 0);
-//        rt_task_start(&dummy_task2, &dummy2, 0);
+        rt_task_create(&dummy_task2, "dummy 2", 0, 0, 0);
+        rt_task_start(&dummy_task2, &dummy2, 0);
 
 
 }
@@ -372,15 +382,12 @@ void wait_for_ctrl_c(){
 
 void cleanup(){
 
-//        rt_task_start(&stop_lMotor, &stoplMotor, 0);
-//        rt_task_start(&stop_rMotor, &stoprMotor, 0);
+        rt_task_start(&stop_lMotor, &stoplMotor, 0);
+        rt_task_start(&stop_rMotor, &stoprMotor, 0);
 
 	rt_task_delete(&rEnc_task);
         rt_task_delete(&lEnc_task);
 	rt_task_delete(&Odo_task);
-
-        rt_task_start(&stop_lMotor, &stoplMotor, 0);
-        rt_task_start(&stop_rMotor, &stoprMotor, 0);
 
 	rt_task_delete(&lMotor_task);
 	rt_task_delete(&rMotor_task);
