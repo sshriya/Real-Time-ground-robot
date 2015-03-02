@@ -25,12 +25,17 @@ Encoder l - A: P8_15
 #include <rtdk.h>
 #include <signal.h>
 #include <native/queue.h>
+#include <native/sem.h>
+#include <math.h>
 
 #define period 1000000
 
 RT_TASK rEnc_task;
 RT_TASK lEnc_task;
-RT_TASK lOdo_task;
+RT_TASK Odo_task;
+
+RT_SEM rsem;
+RT_SEM lsem;
 
 //robot dimension
 #define R 30
@@ -41,24 +46,15 @@ RT_TASK lOdo_task;
 
 #define QUEUE_SIZE 255
 RT_QUEUE rqueue;
-//RT_QUEUE lqueue;
-
-
-float rtick = 0;
-float ltick = 0;
+RT_QUEUE lqueue;
 
 void rEnc(void *arg)
 {
- 	int i = 0;
-	int rtick_prev = 0;
-	int d_tick_r = 0;
     	int r_last = LOW;
     	int inr = 0;
     	int inrB = 0;
-    	char logicA = '1';
-    	char logicB = '2';
-	char msg[10];
-
+	int rtick = 0;
+    	char rticks[40];
     	int fd = open("/dev/mem",O_RDWR | O_SYNC);
     	ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);
     	//configure encoder pins as input
@@ -91,23 +87,23 @@ void rEnc(void *arg)
 			}
 		}
 		r_last = inr;
-		rt_printf("Right ticks: %d \n", rtick);
-		//d_tick_r = rtick - rtick_prev;
+		//rt_printf("Right ticks: %d \n", rtick);
+		
 		//send to odometry task
-		//rt_queue_write(&rqueue, d_tick_r, sizeof(d_tick_r), Q_NORMAL);
+		sprintf(rticks, "%d", rtick);
+		rt_queue_write(&rqueue, rticks, sizeof(rticks), Q_NORMAL);
         }
 	return;
 }
 
 void lEnc(void *arg)
 {
-        int i = 0;
-        int lPose = 0;
-        int r_last = LOW;
-        int inr = 0;
-        int inrB = 0;
-        char logicA = '1';
-        char logicB = '2';
+        int l_last = LOW;
+        int inrl = 0;
+        int inrBl = 0;
+        int ltick = 0;
+	char lticks[40];
+
         int fd = open("/dev/mem",O_RDWR | O_SYNC);
         ulong* pinconf1 =  (ulong*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO1_ADDR);
         //configure encoder pins as input
@@ -120,58 +116,91 @@ void lEnc(void *arg)
                 rt_task_wait_period(NULL);
 
                 if(pinconf1[GPIO_DATAIN/4] & (1 << 15)){
-                        inr = HIGH;
+                        inrl = HIGH;
                 }else{
-                        inr = LOW;
+                        inrl = LOW;
                 }
 
-		 if((r_last == LOW)&&(inr == HIGH)){
+		 if((l_last == LOW)&&(inrl == HIGH)){
                         if(pinconf1[GPIO_DATAIN/4] & (1 << 14)) {
-                                inrB = HIGH;
+                                inrBl = HIGH;
                         }else{
-                                inrB = LOW;
+                                inrBl = LOW;
                         }
 
-                        if(inrB == LOW){
+                        if(inrBl == LOW){
                                 ltick--;
                         }else{
                                 ltick++;
                         }
                 }
-                //r_last = inr;
-                rt_printf("Left ticks: %d \n", ltick);
+                l_last = inrl;
+                //rt_printf("Left ticks: %d \n", ltick);
 		
                 //send to odometry task
-//                rt_queue_write(&lqueue, lPose, sizeof(lPose), Q_NORMAL);
+                sprintf(lticks, "%d", ltick);
+                rt_queue_write(&lqueue, lticks, sizeof(lticks), Q_NORMAL);
+
 
         }
         return;
 }
 
-void lOdo(void *arg){
+void Odo(void *arg){
 
-	float Dr;
-	int rtick_prev = 0;
-	int ltick_prev = 0;
-	int dtick_r = 0;
-	int dtick_l = 0;
+	double rtick_prev = 0;
+	double ltick_prev = 0;
+	double dtick_r = 0;
+	double dtick_l = 0;
+	char r_mesg[40], l_mesg[40];
+	int r_tick, l_tick;
 
+        double Dr, Dc, Dl, x, y, theta, x_dt, y_dt, theta_dt, x_new, y_new, theta_new;
+
+	Dr = Dc = Dl = 0;
+	x = y = theta = 0;
+	x_new=y_new=theta_new = 0;
+	x_dt = y_dt = theta_dt = 0;
 
 	rt_task_set_periodic(NULL, TM_NOW, period);	
 
 	while(1){
 		rt_task_wait_period(NULL);
-//		rt_queue_read(&rqueue, r_tick, sizeof(r_tick), TM_INFINITE);
-		//rt_queue_read(&lqueue, ltick, sizeof(ltick), TM_INFINITE);
 	
-		rt_printf("rdiff is: %d \n", rtick);
-		sleep(0.1);
-                rt_printf("ldiff is: %d \n", ltick);
+		rt_queue_read(&rqueue, r_mesg, sizeof(r_mesg), TM_INFINITE);
+		rt_queue_read(&lqueue, l_mesg, sizeof(l_mesg), TM_INFINITE);
 
-		//dtick_r = rtick - rtick_prev;
-                //dtick_l = ltick - ltick_prev;
+		r_tick = atoi(r_mesg);
+		l_tick = atoi(l_mesg);
 
-		//Dr = m_per_tick*dtick_r;
+		//rt_printf("int data: %d \n", l_tick);
+		//rt_printf("data r : %d \n", r_tick);
+
+		dtick_r = r_tick - rtick_prev;
+                dtick_l = l_tick - ltick_prev;
+
+		Dr = m_per_tick*dtick_r;
+                Dl = m_per_tick*dtick_l;
+		Dc = (Dr+Dl)/2;
+
+		x_dt = Dc*cos(theta);
+		y_dt = Dc*sin(theta);
+		theta_dt = (Dr-Dl)/L;
+
+		theta_new = theta + theta_dt;
+		x_new = x + x_dt;
+		y_new = y + y_dt;
+
+		rtick_prev = r_tick;
+		ltick_prev = l_tick;
+
+		x = x_new;
+		y = y_new;
+		theta = theta_new;
+
+		rt_printf("Robot pose (x, y, theta) is: %lf, %lf, %lf\n", x, y, theta);
+		
+
 	}
 
 }
@@ -184,24 +213,26 @@ void init_xenomai(){
 void startup(){
 
 	rt_queue_create(&rqueue, "rQueue", QUEUE_SIZE, 40, Q_FIFO);
-  //      rt_queue_create(&lqueue, "lQueue", QUEUE_SIZE, 10, Q_FIFO);
+        rt_queue_create(&lqueue, "lQueue", QUEUE_SIZE, 40, Q_FIFO);
+
+	//rt_sem_create(&rsem, "rsem", 0, S_FIFO);
         //&task, name, stack size (0 - default), priority, mode 
         rt_task_create(&rEnc_task, "rEnc Task", 0, 50, 0);
         //&task, task function, function argument
         rt_task_start(&rEnc_task, &rEnc, 0);
 
         //&task, name, stack size (0 - default), priority, mode 
-//        rt_task_create(&lEnc_task, "lEnc Task", 0, 50, 0);
+        rt_task_create(&lEnc_task, "lEnc Task", 0, 50, 0);
         //&task, task function, function argument
-//        rt_task_start(&lEnc_task, &lEnc, 0);
+        rt_task_start(&lEnc_task, &lEnc, 0);
 
 
         //&task, name, stack size (0 - default), priority, mode 
-        rt_task_create(&lOdo_task, "lOdo Task", 0, 60, 0);
+        rt_task_create(&Odo_task, "Odo Task", 0, 60, 0);
         //&task, task function, function argument
-        rt_task_start(&lOdo_task, &lOdo, 0);
+        rt_task_start(&Odo_task, &Odo, 0);
 
-
+	//rt_sem_broadcast(&rsem);
 
 }
 
@@ -219,6 +250,7 @@ void wait_for_ctrl_c(){
 void cleanup(){
 	rt_task_delete(&rEnc_task);
         rt_task_delete(&lEnc_task);
+	rt_task_delete(&Odo_task);
 
 }
 

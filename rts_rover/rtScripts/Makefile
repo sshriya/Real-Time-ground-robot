@@ -1,7 +1,7 @@
 ###### CONFIGURATION ######
 
 ### List of applications to be build
-APPLICATIONS = odometry encoderRead testRT testGPIO_rt ex01 ex02 ex03 ex04 ex05 ex06 gpio controlMotor_rt helloWorld periodicTask mhelloWorld mperiodicTask testMotor
+APPLICATIONS = intertaskComm semaphore odometry encoderRead testRT testGPIO_rt ex01 ex02 ex03 ex04 ex05 ex06 gpio controlMotor_rt helloWorld periodicTask mhelloWorld mperiodicTask testMotor
 
 ### Note: to override the search path for the xeno-config script, use "make XENO=..."
 
@@ -34,7 +34,7 @@ CC=$(shell $(XENOCONFIG) --cc)
 
 CPPFLAGS=$(shell $(XENOCONFIG) --skin=native --cflags) $(MY_CFLAGS)
 
-LDFLAGS=$(MY_LDFLAGS)
+LDFLAGS=$(MY_LDFLAGS) -lm
 LDLIBS=$(shell $(XENOCONFIG) --skin=native --ldflags)
 
 # This includes the library path of given Xenomai into the binary to make live
