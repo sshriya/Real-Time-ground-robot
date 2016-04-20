@@ -1,1 +1,0 @@
-cmd_/root/xenomai-2.6.3/examples/rtdm/driver-api/tut02-skeleton-drv.ko := ld -EL -r  -T /usr/src/linux-headers-3.8.13-xenomai-r72/scripts/module-common.lds --build-id  -o /root/xenomai-2.6.3/examples/rtdm/driver-api/tut02-skeleton-drv.ko /root/xenomai-2.6.3/examples/rtdm/driver-api/tut02-skeleton-drv.o /root/xenomai-2.6.3/examples/rtdm/driver-api/tut02-skeleton-drv.mod.o
