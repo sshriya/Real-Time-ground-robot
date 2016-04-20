@@ -56,3 +56,14 @@ To test system latencies
 ```
 /usr/xenomai/bin/latency
 ```
+##Folder structure
+The rts_rover folder contains rt_scripts that saves all the pin control / example scripts to use xenomai. The cScripts on the other had, contains codes written in C and uses memory based GPIO access to control the robot. The scripts in rt_script can be build by including the name of the file in Makefile and running:
+
+```
+make
+```
+
+The c files can be build as follows:
+```
+gcc testScripts.c -o testScripts
+```
