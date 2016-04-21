@@ -67,3 +67,14 @@ The c files can be build as follows:
 ```
 gcc testScripts.c -o testScripts
 ```
+
+## Common issues
+While trying to use GPIO0,2,3 using nmap, bus error poppoed up. This is because clock to these gpio is not configured by default. A simple solution is to do the following:
+
+```
+echo 5 > /sys/class/gpio/export
+echo 65 > /sys/class/gpio/export
+echo 105 > /sys/class/gpio/export
+```
+
+
