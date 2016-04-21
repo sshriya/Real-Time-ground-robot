@@ -1,7 +1,7 @@
 /* Control a DC motor:
 Motor 1 & 3: Right 
-Logic 1 - P9_12 - GPIO1[28]
-Logic 2 - P9_15 - GPIO1[16]
+Logic 2 - P9_12 - GPIO1[28]
+Logic 1 - P9_15 - GPIO1[16]
 PWM 1 - P9_23 - GPIO1[17]
 
 Motor 2 & 4: Left
@@ -41,10 +41,10 @@ int main(){
      pinconf2[GPIO_DATAOUT/4]  &= ~(1 << 3); // clear pin P8_8
 
    //generate PWM
-for(i = 0 ; i < 1; i++){
+for(i = 0 ; i < 5; i++){
      pinconf1[GPIO_DATAOUT/4]  |= (1 << 17); //PWM on pin P9_23
      pinconf2[GPIO_DATAOUT/4]  |= (1 << 5); //PWM on pin P8_9
-     sleep(1);
+     sleep(0.5);
      pinconf1[GPIO_DATAOUT/4]  ^= (1 << 17); //toggle pin
      pinconf2[GPIO_DATAOUT/4]  ^= (1 << 5); //toggle pin
      sleep(1);
