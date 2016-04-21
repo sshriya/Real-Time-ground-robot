@@ -76,5 +76,9 @@ echo 5 > /sys/class/gpio/export
 echo 65 > /sys/class/gpio/export
 echo 105 > /sys/class/gpio/export
 ```
+Server certficate verification failed:
+```
+export GIT_SSL_NO_VERIFY=1
+```
 
 
