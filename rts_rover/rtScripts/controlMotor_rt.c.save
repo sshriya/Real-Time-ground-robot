@@ -1,5 +1,4 @@
-/* Control a DC motor:
-Motor 1 & 3: Right 
+/* Control a DC motor:Motor 1 & 3: Right 
 Logic 1 - P9_12 - GPIO1[28]
 Logic 2 - P9_15 - GPIO1[16]
 PWM 1 - P9_23 - GPIO1[17]
@@ -33,8 +32,8 @@ PWM 1 - P8_9 - GPIO2[5]
 #define period1 1000000
 #define period2 1000000
 
-#define duty1 period1*0.25
-#define duty2 period2*0.75
+#define duty1 period1/2
+#define duty2 period2/2
 
 RT_TASK rMotor_task;
 RT_TASK lMotor_task;
@@ -59,7 +58,7 @@ void rMotor(void *arg)
 		now = rt_timer_read();
 		pinconf1[GPIO_DATAOUT/4] |= (1 << 17); //PWM on pin P9_23
 		rt_task_sleep(duty1);
-		pinconf1[GPIO_DATAOUT/4] ^= (1 << 17); //toggle pin
+		pinconf1[GPIO_DATAOUT/4] &= ~(1 << 17); //toggle pin
 		rt_printf("right Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
 		previous = now;
 	}
@@ -84,7 +83,7 @@ void lMotor(void *arg)
                 now = rt_timer_read();
                 pinconf2[GPIO_DATAOUT/4] |= (1 << 5); //PWM on pin P8_9
                 rt_task_sleep(duty2);
-                pinconf2[GPIO_DATAOUT/4] ^= (1 << 5); //toggle pin
+                pinconf2[GPIO_DATAOUT/4] &= ~(1 << 5); //toggle pin
                 rt_printf("Left Motor PWM, time taken:%ld. %06ld ms\n", (long)(now-previous)/1000000, (long)(now-previous)%1000000);
                 previous = now;
         }
@@ -108,7 +107,4 @@ int main(){
 
 	rt_printf("end program : ctrl+c\n");
 	pause();
-
-	rt_task_delete(&lMotor_task);
-	rt_task_delete(&rMotor_task);
 }

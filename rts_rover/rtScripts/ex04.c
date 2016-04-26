@@ -123,6 +123,12 @@ void startup(){
         rt_task_create(&demo_task5, "task5", 0, 50, 0);
         rt_task_start(&demo_task5, &demo5, 0);
 
+	rt_task_set_priority(&demo_task1, 50);
+	rt_task_set_priority(&demo_task2, 40);
+        rt_task_set_priority(&demo_task3, 90);
+        rt_task_set_priority(&demo_task4, 10);
+        rt_task_set_priority(&demo_task5, 99);
+
 }
 
 void catch_signal(int sig){

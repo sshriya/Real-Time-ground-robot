@@ -36,9 +36,13 @@ PWM 1 - P8_9 - GPIO2[5]
 #define duty1 period1*0.25
 #define duty2 period2*0.75
 
+#define p1 1000000
+#define p2 1000000
+
 RT_TASK rMotor_task;
 RT_TASK lMotor_task;
-
+RT_TASK dummy_task1;
+RT_TASK dummy_task2;
 
 void rMotor(void *arg)
 {
@@ -90,6 +94,32 @@ void lMotor(void *arg)
         }
 }
 
+//Periodic task
+void dummy1(void *arg)
+{	
+	int i = 0;
+        rt_task_set_periodic(NULL, TM_NOW, p1);
+
+        while (1){
+                rt_task_wait_period(NULL);
+                for(i = 0; i< 1000; i++);
+		rt_printf("Executing dummy task 1\n");
+        }
+}
+
+void dummy2(void *arg)
+{	
+	int i = 0;
+        rt_task_set_periodic(NULL, TM_NOW, p2);
+
+        while (1){
+                rt_task_wait_period(NULL);
+                for(i = 0; i< 1000; i++);
+                rt_printf("Executing dummy task 2\n");
+        }
+}
+
+
 int main(){
     	char str[10];
 	rt_print_auto_init(1);
@@ -105,6 +135,11 @@ int main(){
         sprintf(str, "lMotor"); 
         rt_task_create(&lMotor_task, str, 0, 50, 0);
         rt_task_start(&lMotor_task, &lMotor, 0);
+
+	rt_task_create(&dummy_task1, "dummy 1", 0, 0, 0);
+        rt_task_start(&dummy_task1, &dummy1, 0);
+        rt_task_create(&dummy_task2, "dummy 2", 0, 0, 0);
+        rt_task_start(&dummy_task2, &dummy2, 0);
 
 	rt_printf("end program : ctrl+c\n");
 	pause();

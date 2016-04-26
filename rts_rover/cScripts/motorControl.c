@@ -14,8 +14,7 @@ PWM 1 - P8_9 - GPIO2[5]
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-//#include <iostream>
-//#include<stdio.h>
+
 #define OE_ADDR 0x134
 #define GPIO_DATAOUT 0x13C
 #define GPIO_DATAIN 0x138
@@ -23,7 +22,6 @@ PWM 1 - P8_9 - GPIO2[5]
 #define GPIO1_ADDR 0x4804C000
 #define GPIO2_ADDR 0x481AC000
 #define GPIO3_ADDR 0x481AF000
-//using namespace std;
 
 int main(){
     int i = 0;
@@ -41,13 +39,13 @@ int main(){
      pinconf2[GPIO_DATAOUT/4]  &= ~(1 << 3); // clear pin P8_8
 
    //generate PWM
-for(i = 0 ; i < 5; i++){
-     pinconf1[GPIO_DATAOUT/4]  |= (1 << 17); //PWM on pin P9_23
-     pinconf2[GPIO_DATAOUT/4]  |= (1 << 5); //PWM on pin P8_9
-     sleep(0.5);
-     pinconf1[GPIO_DATAOUT/4]  ^= (1 << 17); //toggle pin
-     pinconf2[GPIO_DATAOUT/4]  ^= (1 << 5); //toggle pin
-     sleep(1);
+     for(i = 0 ; i < 2; i++){
+     	pinconf1[GPIO_DATAOUT/4]  |= (1 << 17); //PWM on pin P9_23
+     	pinconf2[GPIO_DATAOUT/4]  |= (1 << 5); //PWM on pin P8_9
+     	sleep(1);
+     	pinconf1[GPIO_DATAOUT/4]  &= ~(1 << 17); //toggle pin
+     	pinconf2[GPIO_DATAOUT/4]  &= ~(1 << 5); //toggle pin
+     	sleep(1);
     }
     return 0;
 }
