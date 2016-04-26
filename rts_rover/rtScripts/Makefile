@@ -1,7 +1,7 @@
 ###### CONFIGURATION ######
 
 ### List of applications to be build
-APPLICATIONS = encoderRead testRT testGPIO_rt ex01 ex02 ex03 ex04 ex05 ex06 gpio controlMotor_rt helloWorld periodicTask mhelloWorld mperiodicTask testMotor
+APPLICATIONS = odometry encoderRead testRT testGPIO_rt ex01 ex02 ex03 ex04 ex05 ex06 gpio controlMotor_rt helloWorld periodicTask mhelloWorld mperiodicTask testMotor
 
 ### Note: to override the search path for the xeno-config script, use "make XENO=..."
 
