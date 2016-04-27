@@ -80,5 +80,16 @@ Server certficate verification failed:
 ```
 export GIT_SSL_NO_VERIFY=1
 ```
+## Getting qep to work
+```
+git clone https://github.com/Teknoman117/beaglebot
+```
+Copy the qep-*.dtbo to /lib/firmware
+```
+cd /lib/firmware
+echo bone-qep2b > $SLOTS
+find /sys |grep eqep
+```
 
+cat ../position to display tick counts.
 
