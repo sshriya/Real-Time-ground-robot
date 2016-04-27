@@ -93,3 +93,10 @@ find /sys |grep eqep
 
 cat ../position to display tick counts.
 
+## Flashing a new image on BBB
+1. Get the lastest flasher image from http://elinux.org/Beagleboard:BeagleBoneBlack_Debian#Flasher:_.28console.29_.28BeagleBone_Black.2FGreen_eMMC.29
+
+Currently it was:
+```
+
+
