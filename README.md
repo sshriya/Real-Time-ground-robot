@@ -100,6 +100,17 @@ eqep 1A P8_35
 eqep 2A P8_41
 eqep 2B P8_42
 ```
+The paths for the sysfs entries on the beaglebones are
+
+/sys/devices/ocp.*/{epwmss_addr}.epwmss/{eqep_addr}.eqep/
+```
+For eQEP0, the epwmss address is 48300000 and the eqep address is 48300180
+
+For eQEP1, the epwmss address is 48302000 and the eqep address is 48302180
+
+For eQEP2, the epwmss address is 48304000 and the eqep address is 48304180
+```
+
 
 ## Flashing a new image on BBB
 1. Get the lastest flasher image from http://elinux.org/Beagleboard:BeagleBoneBlack_Debian#Flasher:_.28console.29_.28BeagleBone_Black.2FGreen_eMMC.29
