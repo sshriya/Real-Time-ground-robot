@@ -94,9 +94,11 @@ cat ../position to display tick counts.
 
 Pins: 
 ```
+Right encoders
 eqep 1B P8_33
 eqep 1A P8_35
 
+Left Encoders
 eqep 2A P8_41
 eqep 2B P8_42
 ```
