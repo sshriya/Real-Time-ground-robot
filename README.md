@@ -90,8 +90,16 @@ cd /lib/firmware
 echo bone-qep2b > $SLOTS
 find /sys |grep eqep
 ```
-
 cat ../position to display tick counts.
+
+Pins: 
+```
+eqep 1B P8_33
+eqep 1A P8_35
+
+eqep 2A P8_41
+eqep 2B P8_42
+```
 
 ## Flashing a new image on BBB
 1. Get the lastest flasher image from http://elinux.org/Beagleboard:BeagleBoneBlack_Debian#Flasher:_.28console.29_.28BeagleBone_Black.2FGreen_eMMC.29
@@ -115,6 +123,14 @@ ADC3     P9_38
 ADC4     P9_35
 ADC5     P9_39
 ADC6     P9_33
+
+The device tree can be loaded on boot by :
+```
+nano /etc/default/capemgr
+CAPE=PyBBIO-ADC
+CAPE=bone_eqep1
+```
+
 
 
 
