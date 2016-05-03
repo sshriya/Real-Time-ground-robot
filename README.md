@@ -98,5 +98,24 @@ cat ../position to display tick counts.
 
 Currently it was:
 ```
+## ADC 
+Check for the available Device tree overlay, load overlay and the read adc value on cmd
+```
+1. ls /lib/firmware/ | grep ADC
+2. echo PyBBIO-ADC > $SLOTS
+3. cat /sys/bus/iio/devices/iio\:device0/in_voltage0_raw
+
+```
+cScripts contains adcRead.c which can be used to read adc values. 
+ADC pins:
+ADC0     P9_39
+ADC1     P9_40  
+ADC2     P9_37
+ADC3     P9_38
+ADC4     P9_35
+ADC5     P9_39
+ADC6     P9_33
+
+
 
 
